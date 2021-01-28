@@ -55,6 +55,7 @@ RCT_EXPORT_METHOD(isSensorAvailable: (RCTResponseSenderBlock)callback)
 
 RCT_EXPORT_METHOD(authenticate: (NSString *)reason
                   fallback: (BOOL)fallbackEnabled
+                  allowNonBiometricMethods: (BOOL)allowNonBiometricMethods
                   callback: (RCTResponseSenderBlock)callback)
 {
     LAContext *context = [[LAContext alloc] init];
@@ -64,11 +65,18 @@ RCT_EXPORT_METHOD(authenticate: (NSString *)reason
     if (!fallbackEnabled) {
         context.localizedFallbackTitle = @"";
     }
+    
+    LAPolicy policy = LAPolicyDeviceOwnerAuthenticationWithBiometrics;
+    #if __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_10_0
+    if (allowNonBiometricMethods) {
+        policy = LAPolicyDeviceOwnerAuthentication;
+    }
+    #endif
 
     // Device has FingerprintScanner
-    if ([context canEvaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics error:&error]) {
+    if ([context canEvaluatePolicy:policy error:&error]) {
         // Attempt Authentication
-        [context evaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics
+        [context evaluatePolicy:policy
                 localizedReason:reason
                           reply:^(BOOL success, NSError *error)
          {

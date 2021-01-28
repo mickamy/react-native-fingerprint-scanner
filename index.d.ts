@@ -1,6 +1,7 @@
 export type AuthenticateIOS = {
   description?: string;
   fallbackEnabled?: boolean;
+  allowNonBiometricMethods?: boolean;
 };
 export type AuthenticateAndroid = {
   title?: string;
@@ -121,6 +122,7 @@ export interface FingerPrintProps {
       - Returns a `Promise`
       - `description: String` - the string to explain the request for user authentication.
       - `fallbackEnabled: Boolean` - default to ***true***, whether to display fallback button (e.g. Enter Password).
+      - `allowNonBiometricMethods: Boolean` - default to ***false***, whether to allow device owner authentication by non biometric methods (e.g. Passcode, or nearby Apple Watch).
 
       ----------------
       - Example: 

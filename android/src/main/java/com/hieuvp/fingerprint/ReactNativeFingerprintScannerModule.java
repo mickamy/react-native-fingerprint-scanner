@@ -1,15 +1,16 @@
 package com.hieuvp.fingerprint;
 
+import android.app.KeyguardManager;
+import android.content.Context;
 import android.os.Build;
+
 import androidx.annotation.NonNull;
 import androidx.biometric.BiometricPrompt;
 import androidx.biometric.BiometricManager;
-import androidx.biometric.BiometricPrompt.AuthenticationCallback;
 import androidx.biometric.BiometricPrompt.PromptInfo;
 import androidx.fragment.app.FragmentActivity;
 
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import com.facebook.react.bridge.LifecycleEventListener;
@@ -114,7 +115,7 @@ public class ReactNativeFingerprintScannerModule
         return biometricPrompt;
     }
 
-    private void biometricAuthenticate(final String title, final String subtitle, final String description, final String cancelButton, final Promise promise) {
+    private void biometricAuthenticate(final String title, final String subtitle, final String description, final String cancelButton, final boolean allowNonBiometricMethods, final Promise promise) {
         UiThreadUtil.runOnUiThread(
             new Runnable() {
                 @Override
@@ -125,20 +126,38 @@ public class ReactNativeFingerprintScannerModule
 
                     BiometricPrompt bioPrompt = getBiometricPrompt(fragmentActivity, promise);
 
-                    PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
-                        .setDeviceCredentialAllowed(false)
+                    PromptInfo.Builder builder = new BiometricPrompt.PromptInfo.Builder();
+                    builder
                         .setConfirmationRequired(false)
-                        .setNegativeButtonText(cancelButton)
                         .setDescription(description)
                         .setSubtitle(subtitle)
-                        .setTitle(title)
-                        .build();
+                        .setTitle(title);
 
-                    bioPrompt.authenticate(promptInfo);
+                    boolean allowDeviceCredential = false;
+                    if (allowNonBiometricMethods) {
+                        // Before enabling `setDeviceCredentialAllowed`, we need to check if device is secure.
+                        // https://developer.android.com/reference/androidx/biometric/BiometricPrompt.PromptInfo.Builder#setDeviceCredentialAllowed(boolean)
+                        KeyguardManager keyguardManager = (KeyguardManager) mReactContext.getSystemService(Context.KEYGUARD_SERVICE);
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            allowDeviceCredential = keyguardManager.isDeviceSecure();
+                        } else {
+                            // `isKeyguardSecure` considers SIM lock status, but there is no equivalent APIs prior to M.
+                            allowDeviceCredential = keyguardManager.isKeyguardSecure();
+                        }
+                        builder.setDeviceCredentialAllowed(allowDeviceCredential);
+                    }
+
+                    if (!allowDeviceCredential) {
+                        // `setNegativeButtonText` is incompatible with device credential authentication and must NOT be set if the latter is enabled.
+                        // https://developer.android.com/reference/androidx/biometric/BiometricPrompt.PromptInfo.Builder#setNegativeButtonText(java.lang.CharSequence)
+                        builder.setNegativeButtonText(cancelButton);
+                    }
+
+                    bioPrompt.authenticate(builder.build());
                 }
             });
-
     }
+
     // the below constants are consistent across BiometricPrompt and BiometricManager
     private String biometricPromptErrName(int errCode) {
         switch (errCode) {
@@ -193,7 +212,7 @@ public class ReactNativeFingerprintScannerModule
     }
 
     @ReactMethod
-    public void authenticate(String title, String subtitle, String description, String cancelButton, final Promise promise) {
+    public void authenticate(String title, String subtitle, String description, String cancelButton, boolean allowNonBiometricMethods, final Promise promise) {
         if (requiresLegacyAuthentication()) {
             legacyAuthenticate(promise);
         }
@@ -205,7 +224,7 @@ public class ReactNativeFingerprintScannerModule
                 return;
             }
 
-            biometricAuthenticate(title, subtitle, description, cancelButton, promise);
+            biometricAuthenticate(title, subtitle, description, cancelButton, allowNonBiometricMethods, promise);
         }
     }
 

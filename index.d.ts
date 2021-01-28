@@ -8,6 +8,7 @@ export type AuthenticateAndroid = {
   subTitle?: string;
   description?: string;
   cancelButton?: string;
+  allowNonBiometricMethods?: boolean;
   onAttempt?: (error: FingerprintScannerError) => void;
 };
 
@@ -140,10 +141,11 @@ export interface FingerPrintProps {
       ```
       -----------------
 
-      ### authenticate({ description: 'Log in with Biometrics', onAttempt: () => (null) }): (Android)
+      ### authenticate({ description: 'Log in with Biometrics', allowNonBiometricMethods: true, onAttempt: () => (null) }): (Android)
 
       - Returns a `Promise`
       - `description: String` - the title text to appear on the native Android prompt
+      - `allowNonBiometricMethods: Boolean` - default to ***false***, whether to allow device owner authentication by non biometric methods (e.g. PIN, or nearby Apple Watch).
       - `onAttempt: Function` - a callback function when users are trying to scan their fingerprint but failed.
 
       -----------------
@@ -152,6 +154,7 @@ export interface FingerPrintProps {
       FingerprintScanner
         .authenticate({
           description: 'Log in with Biometrics',
+          allowNonBiometricMethods: true,
           onAttempt: this.handleAuthenticationAttempted,
         })
         .then(() => {
